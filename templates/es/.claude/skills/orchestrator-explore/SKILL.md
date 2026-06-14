@@ -17,7 +17,7 @@ Guiar la fase de exploración del orquestador para reunir contexto útil antes d
 
 ## Reglas críticas
 
-- Empieza por entender el alcance exacto del pedido del usuario.
+- Empieza por entender el alcance exacto del pedido del usuario — acláralo preguntándole directamente, **NO leyendo archivos del proyecto tú mismo**.
 - Si hace falta lectura amplia, prioriza exploración y análisis antes de planear implementación.
 - Usa **SOLO OpenCode** como agente de exploración cuando necesites análisis profundo del codebase — su rol es **EXCLUSIVAMENTE análisis**, **NUNCA implementación**.
 - Al delegar exploración a OpenCode, incluye en el brief exactamente qué debe reportar: flujos, dependencias, hallazgos de arquitectura, inconsistencias, etc.
