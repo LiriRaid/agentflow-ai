@@ -100,6 +100,7 @@ let quitRequested = false;
 let resizeTimer = null;
 let isResizing = false;
 let lastColumns = process.stdout?.columns ?? 0;
+let isRendering = false;
 
 function normalizeInlineMessage(message) {
 	return String(message ?? '')
@@ -324,21 +325,24 @@ function ensureEngine() {
 }
 
 function refresh() {
-	if (isResizing) return;
-
-	const snapshot = buildSnapshot();
-	lastRenderedSnapshot = snapshot;
-	ensureStateWatcher();
-	if (!inkApp) {
-		inkApp = render(React.createElement(App, {snapshot, onAction: requestAction}), {
-			exitOnCtrlC: false,
-			patchConsole: false,
-			alternateScreen: true
-		});
-		return;
+	if (isResizing || isRendering) return;
+	isRendering = true;
+	try {
+		const snapshot = buildSnapshot();
+		lastRenderedSnapshot = snapshot;
+		ensureStateWatcher();
+		if (!inkApp) {
+			inkApp = render(React.createElement(App, {snapshot, onAction: requestAction}), {
+				exitOnCtrlC: false,
+				patchConsole: false,
+				alternateScreen: true
+			});
+			return;
+		}
+		inkApp.rerender(React.createElement(App, {snapshot, onAction: requestAction}));
+	} finally {
+		isRendering = false;
 	}
-
-	inkApp.rerender(React.createElement(App, {snapshot, onAction: requestAction}));
 }
 
 function clearTerminal() {
@@ -415,31 +419,25 @@ function ensureStateWatcher() {
 	} catch { stateWatcher = null; }
 }
 
-// Tick independiente del reloj: actualiza activeLabel y timestamp cada 1s
-// sin leer el STATE_FILE, usando la última snapshot cacheada.
+// Tick del reloj: solo actualiza lastRenderedSnapshot en memoria.
+// scheduleRefresh es la única fuente de rerender para evitar renders concurrentes.
 function startClockTick() {
 	clockInterval = setInterval(() => {
-		if (!inkApp || !lastRenderedSnapshot?.startedAt) return;
+		if (!lastRenderedSnapshot?.startedAt) return;
 		const activeSeconds = Math.max(0, Math.round((Date.now() - lastRenderedSnapshot.startedAt) / 1000));
-		const updated = {
+		lastRenderedSnapshot = {
 			...lastRenderedSnapshot,
 			activeLabel: formatDuration(activeSeconds),
 			timestamp: new Date().toLocaleString(getLocale(), {hour12: false})
 		};
-		lastRenderedSnapshot = updated;
-		inkApp.rerender(React.createElement(App, {snapshot: updated, onAction: requestAction}));
 	}, 1000);
 }
 
 function scheduleRefresh() {
-	const engineState = readEngineState();
-	const busy = engineState && Object.values(engineState.agents || {}).some(a => a.status === 'busy');
-	const hasWork = engineState && ((engineState.queue || []).length > 0 || (engineState.inProgress || []).length > 0);
-	const ms = (busy || hasWork) ? 1000 : 4000;
 	refreshTimer = setTimeout(() => {
 		refresh();
 		scheduleRefresh();
-	}, ms);
+	}, 1000);
 }
 
 function mount() {
@@ -450,18 +448,14 @@ function mount() {
 
 	if (process.stdout.isTTY) {
 		process.stdout.on('resize', () => {
-			const nextColumns = process.stdout.columns ?? 0;
-			const shrinking = nextColumns > 0 && lastColumns > 0 && nextColumns < lastColumns;
-			lastColumns = nextColumns;
+			lastColumns = process.stdout.columns ?? 0;
 			isResizing = true;
 			if (resizeTimer) clearTimeout(resizeTimer);
 			resizeTimer = setTimeout(() => {
-				if (shrinking) {
-					clearTerminal();
-					if (inkApp) {
-						inkApp.unmount();
-						inkApp = null;
-					}
+				clearTerminal();
+				if (inkApp) {
+					inkApp.unmount();
+					inkApp = null;
 				}
 				isResizing = false;
 				refresh();
