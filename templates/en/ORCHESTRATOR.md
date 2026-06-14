@@ -47,6 +47,23 @@ The TUI handles automatic fallback: Codex fails → Claude-Worker directly. You 
 
 The `repo` field determines the working directory: `frontend` for UI/client work, `backend` for API/server work. Codex and OpenCode can work in either repo depending on the task.
 
+### Parallel Execution Rule
+
+**Never queue all tasks behind one OpenCode analysis if context already exists.**
+
+When multiple tasks arrive:
+
+- **Check context first**: Are there existing OpenCode reports in `progress/PROGRESS-OpenCode.md` or `INBOX.md` for the area being touched? Is this a long session where the codebase is already well understood?
+- **If context is sufficient** → assign all implementation tasks directly to Codex (and Claude-Worker for overflow) in parallel. Do NOT send them to OpenCode first.
+- **If context is missing for a specific area** → send ONE task to OpenCode for that area. Assign all other independent tasks to Codex in parallel — do not make them wait.
+- **Never serialize work that can run in parallel.** If 5 tasks are independent and context is clear, all 5 go out at once to available agents.
+
+**When is context "sufficient"?**
+- OpenCode already reported on this area in the current session.
+- The task is a direct follow-up to a completed task (same files, same pattern).
+- The user explicitly defined what to change (specific files, keys, values) — no exploration needed.
+- Similar tasks were already completed successfully in this session.
+
 ## This Workspace Is NOT the Real Project
 
 This directory (`orchestrator-<name>`) exists **only** for work management:
@@ -160,11 +177,12 @@ Default agent summary:
 ## How To Assign Work
 
 1. **When the user asks for a change or new task** → **NEVER analyze directly yourself**
-- **If prior analysis is needed**: Create a TASK in `QUEUE.md` assigned **EXCLUSIVELY** to **OpenCode** to explore the context
-- **Wait for the report**: OpenCode writes findings to `progress/PROGRESS-OpenCode.md` and notifies in `INBOX.md`
-- **Then implement**: **READ OPENCODE'S REPORT** in `progress/PROGRESS-OpenCode.md` or `INBOX.md` and create new TASK assigned to **Codex** (or Claude-Worker if Codex is unavailable)
+- **If context already exists** (OpenCode reports from this session, completed similar tasks, user-specified exact changes): **skip OpenCode** and create implementation TASKs directly assigned to **Codex** or **Claude-Worker**. Assign all independent tasks in parallel.
+- **If prior analysis is needed** (new area, unknown structure, no prior report): Create ONE TASK in `QUEUE.md` assigned to **OpenCode** for that area. Assign all other independent tasks to Codex in parallel — do not make them wait for OpenCode.
+- **Wait for the OpenCode report only for the tasks that depend on it**: OpenCode writes findings to `progress/PROGRESS-OpenCode.md` and notifies in `INBOX.md`
+- **Then implement the dependent task**: **READ OPENCODE'S REPORT** and create the implementation TASK assigned to **Codex**
 - **OpenCode DOES NOT implement** — its TASKs are **ONLY for analysis**; implementation **ALWAYS** goes to Codex or Claude-Worker
-- **NEVER, under any circumstances, analyze the project code yourself (Claude-Orchestrator)** — **THIS IS OPENCODE'S EXCLUSIVE JOB**. If a report from OpenCode already exists, **USE THAT CONTEXT** to create implementation tasks.
+- **NEVER analyze the project code yourself (Claude-Orchestrator)** — use OpenCode for that. If a report already exists, **USE THAT CONTEXT** directly.
 
 2. Write TASKs in `QUEUE.md` with this format:
 
@@ -202,10 +220,11 @@ Routing preferences:
 8. Use Engram for durable decisions, bugs, discoveries, and session summaries.
 9. Use `openspec/changes/<change-name>/` for large changes.
 10. Claude remains the final reviewer before work is considered accepted.
-11. **MANDATORY VERIFICATION:** Before creating any implementation TASK, **READ AND CONFIRM THAT:**
-   - There is an OpenCode report in `INBOX.md` or `progress/PROGRESS-OpenCode.md` for the requested analysis.
-   - The implementation TASK is based **EXCLUSIVELY** on OpenCode's report.
-   - **YOU (Claude-Orchestrator) HAVE NOT** analyzed the code yourself.
+11. **MANDATORY VERIFICATION:** Before creating implementation TASKs, confirm one of:
+   - There is an OpenCode report in `INBOX.md` or `progress/PROGRESS-OpenCode.md` covering the area, OR
+   - The user provided explicit enough detail (exact files, values, changes) that no exploration is needed, OR
+   - Similar work was already completed this session (context is already established).
+   - **YOU (Claude-Orchestrator) HAVE NOT** analyzed the code yourself in any case.
 
 ## TUI Controls
 

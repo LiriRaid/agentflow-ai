@@ -9,11 +9,16 @@
 const blessed = require("blessed");
 const { spawn } = require("child_process");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const WORKSPACE = process.env.ORCHESTRATOR_WORKSPACE
   ? path.resolve(process.env.ORCHESTRATOR_WORKSPACE)
   : path.resolve(process.cwd());
+
+// Global supply chain — the user's ~/.claude dir (rules, skills, CLAUDE.md, etc.)
+// Worker agents are given access to this dir so they follow the same standards as Claude.
+const GLOBAL_CLAUDE_DIR = path.join(os.homedir(), ".claude");
 
 // ============================================================================
 // CONFIGURATION — loaded from orchestrator.config.json
@@ -1178,6 +1183,14 @@ function generateBrief(task) {
     if (taskMatch) taskEntry = taskMatch[0];
   }
 
+  // Global developer standards — read the user's ~/.claude/CLAUDE.md verbatim.
+  // Each developer has their own standards there; we don't parse specific sections.
+  let globalStandards = "";
+  const globalClaude = path.join(GLOBAL_CLAUDE_DIR, "CLAUDE.md");
+  if (fs.existsSync(globalClaude)) {
+    globalStandards = fs.readFileSync(globalClaude, "utf-8").trim();
+  }
+
   // Project plan — if `<projectName>-plan.md` or `PLAN.md` exists in the workspace,
   // inject it as shared context so every agent sees the big-picture plan.
   let projectPlan = "";
@@ -1217,7 +1230,9 @@ function generateBrief(task) {
 # Priority: ${task.priority}
 # Workspace: ${WORKSPACE}
 # Progress file: ${progressFile}
+# Global supply chain: ${GLOBAL_CLAUDE_DIR}
 
+${globalStandards ? `## Global Developer Standards\n> Extracted from ${globalClaude} — apply these rules to ALL code in this task.\n\n${globalStandards}\n` : ""}
 ${projectPlan ? `## Project Plan (big picture — use as context, don't try to do everything)\n${projectPlan}\n` : ""}
 ${agentInstructions ? `## Agent Instructions\n${agentInstructions}` : ""}
 ${protocolRules ? `## Protocol Rules\n${protocolRules}` : ""}
@@ -1274,6 +1289,7 @@ function buildCliCommand(agentCfg, task, prompt) {
           ...(agentCfg.model ? ["--model", agentCfg.model] : []),
           "--add-dir",
           WORKSPACE,
+          ...(fs.existsSync(GLOBAL_CLAUDE_DIR) ? ["--add-dir", GLOBAL_CLAUDE_DIR] : []),
           "--name",
           `${task.agent}-${task.id}`,
         ],
@@ -1281,7 +1297,14 @@ function buildCliCommand(agentCfg, task, prompt) {
     case "codex":
       return {
         cmd: "codex",
-        args: ["exec", "--yolo", "--add-dir", WORKSPACE, "-"],
+        args: [
+          "exec",
+          "--yolo",
+          "--add-dir",
+          WORKSPACE,
+          ...(fs.existsSync(GLOBAL_CLAUDE_DIR) ? ["--add-dir", GLOBAL_CLAUDE_DIR] : []),
+          "-",
+        ],
       };
     case "opencode":
       return {
@@ -2062,92 +2085,12 @@ setInterval(() => {
   renderDashboard();
 }, 5 * 60 * 1000);
 
-// ============================================================================
-// INBOX WATCHER — reacts immediately when a task completion is written to INBOX.md
-// Spawns headless Claude to check if a new implementation task needs to be created
-// ============================================================================
-let _inboxDebounce = null;
-let _lastInboxContent = '';
-let _inboxDispatching = false;
-
-function dispatchInboxClaude() {
-  if (_inboxDispatching) return;
-  let content = '';
-  try { content = fs.existsSync(INBOX_FILE) ? fs.readFileSync(INBOX_FILE, 'utf-8') : ''; } catch {}
-  if (!content.trim() || content === _lastInboxContent) return;
-
-  _lastInboxContent = content;
-  _inboxDispatching = true;
-
-  const lang = WORKSPACE_LANGUAGE;
-  const prompt = lang === 'es'
-    ? `Eres el orquestador de este workspace. Tu única misión ahora es procesar el INBOX.
-
-Pasos:
-1. Lee INBOX.md en ${WORKSPACE}
-2. Lee QUEUE.md en ${WORKSPACE} para ver las tareas existentes (secciones Pendientes, En progreso, Completadas)
-
-Si en INBOX.md hay análisis completados de un agente (especialmente OpenCode) que aún NO tienen su tarea de implementación en la sección ## Pendientes de QUEUE.md:
-- Determina el siguiente TASK ID disponible leyendo QUEUE.md
-- Crea la nueva TASK en QUEUE.md con el formato exacto:
-  TASK-NNN | título corto | Codex | P1 | repo | descripción basada en el análisis
-
-Si ya existe la tarea correspondiente, o el análisis no está completo, responde solo: "Sin acción necesaria."
-
-Reglas: No hagas commit ni push. No analices código del proyecto. Solo lee INBOX.md y QUEUE.md, y edita QUEUE.md si hace falta.`
-    : `You are the orchestrator for this workspace. Your only mission now is to process the INBOX.
-
-Steps:
-1. Read INBOX.md in ${WORKSPACE}
-2. Read QUEUE.md in ${WORKSPACE} to see existing tasks (sections Pending, In Progress, Completed)
-
-If INBOX.md contains completed analyses from an agent (especially OpenCode) that do NOT yet have a corresponding implementation task in the ## Pending section of QUEUE.md:
-- Determine the next available TASK ID by reading QUEUE.md
-- Create the new TASK in QUEUE.md with the exact format:
-  TASK-NNN | short title | Codex | P1 | repo | description based on the analysis
-
-If the corresponding task already exists, or the analysis is not complete, reply only: "No action needed."
-
-Rules: Do not commit or push. Do not analyze project code. Only read INBOX.md and QUEUE.md, and edit QUEUE.md if necessary.`;
-
-  const logPath = path.join(LOG_DIR, `inbox-trigger-${Date.now()}.log`);
-  try {
-    const logFd = fs.openSync(logPath, 'a');
-    const child = spawn('claude', [
-      '-p', prompt,
-      '--add-dir', WORKSPACE,
-      '--dangerously-skip-permissions'
-    ], {
-      cwd: WORKSPACE,
-      stdio: ['ignore', logFd, logFd],
-      shell: true,
-      windowsHide: true,
-      detached: true
-    });
-    fs.closeSync(logFd);
-    child.unref();
-    log('INFO', lang === 'es'
-      ? 'INBOX: Claude despachado para procesar notificación'
-      : 'INBOX: Claude dispatched to process notification');
-  } catch {}
-  setTimeout(() => { _inboxDispatching = false; }, 3 * 60 * 1000);
+// INBOX.md initialization — create empty file if it doesn't exist so the
+// Claude session can watch it. Notifications are delivered via NOTIFY.md +
+// the asyncRewake hook in .claude/settings.json (watch-notify.js).
+if (!fs.existsSync(INBOX_FILE)) {
+  try { fs.writeFileSync(INBOX_FILE, '', 'utf-8'); } catch {}
 }
-
-function startInboxWatcher() {
-  if (!fs.existsSync(INBOX_FILE)) {
-    try { fs.writeFileSync(INBOX_FILE, '', 'utf-8'); } catch {}
-  }
-  try {
-    const watchName = path.basename(INBOX_FILE);
-    const watcher = fs.watch(WORKSPACE, {persistent: false}, (eventType, filename) => {
-      if (filename !== watchName) return;
-      if (_inboxDebounce) clearTimeout(_inboxDebounce);
-      _inboxDebounce = setTimeout(dispatchInboxClaude, 100);
-    });
-    watcher.on('error', () => {});
-  } catch {}
-}
-startInboxWatcher();
 
 // ============================================================================
 // AWAY MODE WATCHER — monitors .away-mode file; when active runs periodic
