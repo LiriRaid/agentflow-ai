@@ -1154,16 +1154,8 @@ function generateBrief(task) {
     if (taskMatch) taskEntry = taskMatch[0];
   }
 
-  // Global developer standards — read the user's ~/.claude/CLAUDE.md verbatim.
-  // Each developer has their own standards there; we don't parse specific sections.
-  let globalStandards = "";
-  const globalClaude = path.join(GLOBAL_CLAUDE_DIR, "CLAUDE.md");
-  if (fs.existsSync(globalClaude)) {
-    globalStandards = fs.readFileSync(globalClaude, "utf-8").trim();
-  }
-
-  // Project plan — if `<projectName>-plan.md` or `PLAN.md` exists in the workspace,
-  // inject it as shared context so every agent sees the big-picture plan.
+  // Project plan — only inject the first 60 lines as orientation context.
+  // Worker agents don't need the full plan to execute a single task.
   let projectPlan = "";
   const planCandidates = [
     path.join(
@@ -1175,7 +1167,9 @@ function generateBrief(task) {
   ];
   for (const p of planCandidates) {
     if (fs.existsSync(p)) {
-      projectPlan = fs.readFileSync(p, "utf-8");
+      const lines = fs.readFileSync(p, "utf-8").split("\n");
+      projectPlan = lines.slice(0, 60).join("\n");
+      if (lines.length > 60) projectPlan += "\n\n[Plan truncated — full plan in PLAN.md]";
       break;
     }
   }
@@ -1201,10 +1195,8 @@ function generateBrief(task) {
 # Priority: ${task.priority}
 # Workspace: ${WORKSPACE}
 # Progress file: ${progressFile}
-# Global supply chain: ${GLOBAL_CLAUDE_DIR}
 
-${globalStandards ? `## Global Developer Standards\n> Extracted from ${globalClaude} — apply these rules to ALL code in this task.\n\n${globalStandards}\n` : ""}
-${projectPlan ? `## Project Plan (big picture — use as context, don't try to do everything)\n${projectPlan}\n` : ""}
+${projectPlan ? `## Project Plan (orientation only — focus on your task)\n${projectPlan}\n` : ""}
 ${agentInstructions ? `## Agent Instructions\n${agentInstructions}` : ""}
 ${protocolRules ? `## Protocol Rules\n${protocolRules}` : ""}
 
