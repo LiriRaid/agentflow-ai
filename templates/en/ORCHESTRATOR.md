@@ -74,7 +74,7 @@ This directory (`orchestrator-<name>`) exists **only** for work management:
 - `logs/` — agent output
 
 The real project code lives at the paths defined in `orchestrator.config.json → repos`.
-When you need to understand the project in order to plan tasks, **read files from those paths**.
+**Do NOT read real project code files to understand the project.** If codebase analysis is needed to plan tasks, delegate it to OpenCode via a TASK in `QUEUE.md` — that is what OpenCode is for.
 **Never modify real project files directly** — that is exclusively the workers' job.
 
 ## Startup Checklist
@@ -136,13 +136,15 @@ del .away-mode
 
 ## Fallback Policy
 
-The TUI handles fallback automatically following this chain:
+The TUI handles fallback automatically following these chains:
 
+**By failure:**
 ```
-Codex fails → OpenCode → Frontend (frontend repo) or Backend (backend repo)
+OpenCode fails → Codex → Claude-Worker (Frontend/Backend)
+Codex fails    → OpenCode → Claude-Worker (Frontend/Backend)
 ```
-Codex fails  →  Frontend (frontend repo) or Backend (backend repo) directly
-```
+
+**By availability (when assigning new tasks):** Claude-Orchestrator should check `STATUS.md` before writing to `QUEUE.md`. If the primary agent for a task is already busy or rate-limited, assign directly to the next available idle agent in the chain rather than queuing behind a busy one.
 
 As Orchestrator you do **not** need to manually reassign on failure — the TUI does it. Your role is:
 

@@ -38,7 +38,7 @@ Este directorio (`orchestrator-<nombre>`) existe **únicamente** para gestión d
 - `logs/` — salida de los agentes
 
 El código real del proyecto vive en las rutas definidas en `orchestrator.config.json → repos`.
-Cuando necesites entender el proyecto para planificar tareas, **lee archivos desde esas rutas**.
+**NO leas archivos de código del proyecto real para planificar tareas.** Si necesitas análisis del codebase para crear TASKs, delégalo a OpenCode mediante una TASK en `QUEUE.md` — para eso existe OpenCode.
 **Nunca modifiques archivos del proyecto real directamente** — eso es trabajo exclusivo de los agentes workers.
 
 ## Al iniciar la sesión — OBLIGATORIO
@@ -132,13 +132,15 @@ del .away-mode
 
 ### Fallback por cuota o indisponibilidad
 
-La TUI gestiona el fallback automáticamente siguiendo esta cadena:
+La TUI gestiona el fallback automáticamente siguiendo estas cadenas:
 
+**Por fallo:**
 ```
-Codex falla → OpenCode → Frontend (repo FE) o Backend (repo BE)
+OpenCode falla → Codex → Claude-Worker (Frontend/Backend)
+Codex falla    → OpenCode → Claude-Worker (Frontend/Backend)
 ```
-Codex falla  →  Frontend (repo FE) o Backend (repo BE) directamente
-```
+
+**Por disponibilidad (al asignar tareas nuevas):** Claude-Orquestador debe revisar `STATUS.md` antes de escribir en `QUEUE.md`. Si el agente primario para una tarea ya está ocupado o tiene rate limit, asigna directamente al siguiente agente idle en la cadena en lugar de dejar la tarea esperando detrás de uno ocupado.
 
 Como Orquestador, **no necesitas reasignar manualmente** cuando hay un fallo — la TUI lo hace sola. Tu rol en este caso es:
 
@@ -221,7 +223,7 @@ Revisa `orchestrator.config.json` → `agents`. Cada entrada tiene:
 6. Al terminar la sesión, escribe un `handoffs/HANDOFF-<fecha>.md` resumiendo qué se hizo y qué sigue.
 7. **Por defecto solo usa Claude, Codex y OpenCode**. No uses Gemini, Cursor ni Abacus salvo instrucción explícita del usuario.
 8. Si el usuario activa **Modo Ausencia**, revisa progreso cada 5 minutos y reasigna nuevas TASKs razonables dentro del alcance actual sin esperar confirmación intermedia.
-9. La TUI gestiona el fallback automáticamente: Codex falla → OpenCode → Claude-Worker (Frontend/Backend según repo). Solo intervén manualmente si la tarea queda marcada `failed`.
+9. La TUI gestiona el fallback automáticamente: OpenCode falla → Codex → Claude-Worker; Codex falla → OpenCode → Claude-Worker. Solo intervén manualmente si la tarea queda marcada `failed`.
 10. Usa Engram para guardar decisiones, hallazgos, bugs y resúmenes de sesión; no dependas solo del contexto corto de la conversación.
 11. **VERIFICACIÓN OBLIGATORIA:** Antes de crear TASKs de implementación, confirma una de estas condiciones:
    - Existe un reporte de OpenCode en `INBOX.md` o `progress/PROGRESS-OpenCode.md` que cubre el área, O
