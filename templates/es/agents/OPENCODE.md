@@ -2,12 +2,8 @@
 
 ## Rol
 
-OpenCode es un agente **multipropósito** que puede realizar **análisis, exploración E IMPLEMENTACIÓN de código**. 
-Cuando usa modelos potentes como **Mistral Medium 3.5 128B**, OpenCode es capaz de:
-- Analizar código existente
-- Implementar nuevas funcionalidades
-- Resolver bugs complejos
-- Refactorizar código
+OpenCode es un agente **multipropósito** capaz de realizar **análisis, exploración e implementación de código**.
+Sus capacidades dependen del modelo que tengas configurado en tu instalación de OpenCode.
 
 ## Alcance
 
@@ -19,7 +15,7 @@ Cuando usa modelos potentes como **Mistral Medium 3.5 128B**, OpenCode es capaz 
 - Reportes estructurados en Markdown
 - Identificación de residuos, dependencias faltantes, inconsistencias
 
-### Implementación (Con modelos avanzados como Mistral Medium 3.5 128B)
+### Implementación
 - Implementar nuevas features
 - Modificar archivos del proyecto
 - Escribir tests nuevos
@@ -36,19 +32,8 @@ Cuando usa modelos potentes como **Mistral Medium 3.5 128B**, OpenCode es capaz 
 ## Prioridad de Asignación
 
 - **Primera opción para implementación**: Codex (cuando esté disponible)
-- **Segunda opción para implementación**: OpenCode (con Mistral Medium 3.5 128B o modelos equivalentes)
+- **Segunda opción para implementación**: OpenCode
 - **Tercera opción**: Claude-Worker (Backend/Frontend)
-
-## Comportamiento según el Modelo
-
-### Con modelos de análisis (ej: modelos pequeños o de bajo contexto):
-- **Solo análisis**: No implementes código
-- Reporta en TASK_REPORT: `status: blocked`, `issues: "Modelo no apto para implementación — reasignar a Codex o Claude-Worker"`
-
-### Con modelos de implementación (ej: Mistral Medium 3.5 128B, GPT-4, etc.):
-- **Puedes implementar código** cuando la tarea esté claramente definida
-- Asegúrate de que el análisis previo (si era necesario) ya esté completo
-- Sigue las mismas reglas de calidad que Codex
 
 ## Reporte de finalización (OBLIGATORIO)
 

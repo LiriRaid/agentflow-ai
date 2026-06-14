@@ -32,7 +32,7 @@ project-workspace/
 |-------|------|----------|-------|
 | **Claude-Orchestrator** | Session coordinator | - | Never implements code directly; delegates to workers |
 | **Codex** | Primary implementation | 1st choice | Structured tasks, tests, docs |
-| **OpenCode** | Analysis + Implementation | 2nd choice | Uses Mistral Medium 3.5 128B for coding |
+| **OpenCode** | Analysis + Implementation | 2nd choice | Uses your configured model |
 | **Claude-Worker** (Backend/Frontend) | Fallback implementation | 3rd choice | Takes over when Codex/OpenCode fail |
 | **Gemini** | Code review/audits | Optional | Disabled by default |
 | **Cursor/Abacus** | Mechanical tasks | Optional | Disabled by default |
@@ -44,7 +44,7 @@ project-workspace/
 
 ### 4. **Smart Task Delegation**
 - **Analysis tasks** → Always assigned to **OpenCode**.
-- **Implementation tasks** → Assigned to **Codex** (1st) → **OpenCode** (2nd, if using Mistral Medium 3.5 128B) → **Claude-Worker** (3rd).
+- **Implementation tasks** → Assigned to **Codex** (1st) → **OpenCode** (2nd) → **Claude-Worker** (3rd).
 - **Fallback chain**: `Codex → OpenCode → Claude-Worker` (automatic).
 
 ### 5. **Persistent Memory & SDD**
@@ -56,14 +56,14 @@ project-workspace/
 
 ### Global CLI (Recommended)
 ```bash
-npm i -g @liriraid/agentflow-ai
+pnpm add -g @liriraid/agentflow-ai
 ```
 
 ### Local Development
 ```bash
 git clone https://github.com/LiriRaid/agentflow-ai.git
 cd agentflow-ai
-npm install
+pnpm install
 ```
 
 ## 🛠️ Quick Start
@@ -169,17 +169,16 @@ orchestrator-my-project/
     "opencode": { "enabled": true, "localConfigDir": ".opencode" }
   },
   "agents": {
-    "Backend": { "cli": "claude", "defaultRepo": "backend", "model": "sonnet" },
-    "Frontend": { "cli": "claude", "defaultRepo": "frontend", "model": "sonnet" },
-    "Codex": { "cli": "codex", "defaultRepo": "backend", "model": "gpt-5.5" },
-    "OpenCode": { "cli": "opencode", "defaultRepo": "frontend", "model": "auto" }
+    "Backend": { "cli": "claude", "defaultRepo": "backend" },
+    "Frontend": { "cli": "claude", "defaultRepo": "frontend" },
+    "Codex": { "cli": "codex", "defaultRepo": "backend" },
+    "OpenCode": { "cli": "opencode", "defaultRepo": "frontend" }
   }
 }
 ```
 
 ### Model Selection
-- Use `"model": "auto"` to let the agent use your default configured model (e.g., Mistral Medium 3.5 128B for OpenCode).
-- Specify a model explicitly (e.g., `"model": "gpt-5.5"`) to override.
+Each agent uses the model you have configured in its own CLI. You can optionally override it by adding `"model": "model-name"` to any agent entry — for Claude this accepts values like `sonnet` or `opus`.
 
 ## 🔄 Workflow Example
 
@@ -201,12 +200,12 @@ orchestrator-my-project/
 
 ## 📊 Supported Agents & Models
 
-| Agent | CLI | Default Model | Implementation? | Notes |
-|-------|-----|----------------|----------------|-------|
-| Backend | `claude` | sonnet | ✅ Yes | Claude-Worker for backend tasks |
-| Frontend | `claude` | sonnet | ✅ Yes | Claude-Worker for frontend tasks |
-| Codex | `codex` | gpt-5.5 | ✅ Yes | Primary implementation |
-| OpenCode | `opencode` | auto | ✅ **Yes** (with Mistral Medium 3.5 128B) | Secondary implementation |
+| Agent | CLI | Model | Implementation? | Notes |
+|-------|-----|-------|----------------|-------|
+| Backend | `claude` | auto | ✅ Yes | Claude-Worker for backend tasks |
+| Frontend | `claude` | auto | ✅ Yes | Claude-Worker for frontend tasks |
+| Codex | `codex` | auto | ✅ Yes | Primary implementation |
+| OpenCode | `opencode` | auto | ✅ Yes | Secondary implementation |
 | Gemini | `gemini` | auto | ❌ No | Audits/reviews only |
 | Cursor | `cursor` | auto | ❌ No | Bulk edits only |
 | Abacus | `abacusai` | auto | ❌ No | Small focused tasks |

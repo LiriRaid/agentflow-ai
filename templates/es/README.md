@@ -34,7 +34,7 @@ workspace-proyecto/
 |--------|-----|----------|-------|
 | **Claude-Orquestador** | Coordinador de sesión | - | Nunca implementa código directamente; delega a workers |
 | **Codex** | Implementación primaria | 1ra opción | Tareas estructuradas, tests, docs |
-| **OpenCode** | Análisis + Implementación | 2da opción | Usa Mistral Medium 3.5 128B para código |
+| **OpenCode** | Análisis + Implementación | 2da opción | Usa el modelo que tengas configurado |
 | **Claude-Worker** (Backend/Frontend) | Fallback | 3ra opción | Toma el relevo si Codex/OpenCode fallan |
 | **Gemini** | Revisión/auditoría | Opcional | Deshabilitado por defecto |
 | **Cursor/Abacus** | Tareas mecánicas | Opcional | Deshabilitado por defecto |
@@ -46,7 +46,7 @@ workspace-proyecto/
 
 ### 4. **Delegación Inteligente de Tareas**
 - **Tareas de análisis** → Siempre asignadas a **OpenCode**.
-- **Tareas de implementación** → Asignadas a **Codex** (1ra) → **OpenCode** (2da, si usa Mistral Medium 3.5 128B) → **Claude-Worker** (3ra).
+- **Tareas de implementación** → Asignadas a **Codex** (1ra) → **OpenCode** (2da) → **Claude-Worker** (3ra).
 - **Cadena de fallback**: `Codex → OpenCode → Claude-Worker` (automático).
 
 ### 5. **Memoria Persistente y SDD**
@@ -58,14 +58,14 @@ workspace-proyecto/
 
 ### CLI Global (Recomendado)
 ```bash
-npm i -g @liriraid/agentflow-ai
+pnpm add -g @liriraid/agentflow-ai
 ```
 
 ### Desarrollo Local
 ```bash
 git clone https://github.com/LiriRaid/agentflow-ai.git
 cd agentflow-ai
-npm install
+pnpm install
 ```
 
 ## 🛠️ Inicio Rápido
@@ -171,17 +171,16 @@ orchestrator-mi-proyecto/
     "opencode": { "enabled": true, "localConfigDir": ".opencode" }
   },
   "agents": {
-    "Backend": { "cli": "claude", "defaultRepo": "backend", "model": "sonnet" },
-    "Frontend": { "cli": "claude", "defaultRepo": "frontend", "model": "sonnet" },
-    "Codex": { "cli": "codex", "defaultRepo": "backend", "model": "gpt-5.5" },
-    "OpenCode": { "cli": "opencode", "defaultRepo": "frontend", "model": "auto" }
+    "Backend": { "cli": "claude", "defaultRepo": "backend" },
+    "Frontend": { "cli": "claude", "defaultRepo": "frontend" },
+    "Codex": { "cli": "codex", "defaultRepo": "backend" },
+    "OpenCode": { "cli": "opencode", "defaultRepo": "frontend" }
   }
 }
 ```
 
 ### Selección de Modelo
-- Usa `"model": "auto"` para que el agente use el modelo configurado por defecto en tu sistema (ej: Mistral Medium 3.5 128B para OpenCode).
-- Especifica un modelo explícitamente (ej: `"model": "gpt-5.5"`) para sobrescribir.
+Cada agente usa el modelo que tengas configurado en su propio CLI. Podés agregar opcionalmente `"model": "nombre-del-modelo"` en la entrada de cualquier agente para sobrescribir — para Claude acepta valores como `sonnet` u `opus`.
 
 ## 🔄 Ejemplo de Flujo de Trabajo
 
@@ -203,12 +202,12 @@ orchestrator-mi-proyecto/
 
 ## 📊 Agentes Soportados y Modelos
 
-| Agente | CLI | Modelo por Defecto | ¿Implementa? | Notas |
-|--------|-----|---------------------|--------------|-------|
-| Backend | `claude` | sonnet | ✅ Sí | Claude-Worker para tareas de backend |
-| Frontend | `claude` | sonnet | ✅ Sí | Claude-Worker para tareas de frontend |
-| Codex | `codex` | gpt-5.5 | ✅ Sí | Implementación primaria |
-| OpenCode | `opencode` | auto | ✅ **Sí** (con Mistral Medium 3.5 128B) | Implementación secundaria |
+| Agente | CLI | Modelo | ¿Implementa? | Notas |
+|--------|-----|--------|--------------|-------|
+| Backend | `claude` | auto | ✅ Sí | Claude-Worker para tareas de backend |
+| Frontend | `claude` | auto | ✅ Sí | Claude-Worker para tareas de frontend |
+| Codex | `codex` | auto | ✅ Sí | Implementación primaria |
+| OpenCode | `opencode` | auto | ✅ Sí | Implementación secundaria |
 | Gemini | `gemini` | auto | ❌ No | Solo auditorías/revisiones |
 | Cursor | `cursor` | auto | ❌ No | Solo ediciones masivas |
 | Abacus | `abacusai` | auto | ❌ No | Solo tareas pequeñas y enfocadas |
@@ -290,7 +289,7 @@ pero **ese no es el flujo recomendado** para este proyecto.
 Instala el CLI una sola vez:
 
 ```bash
-npm i -g @liriraid/agentflow-ai
+pnpm add -g @liriraid/agentflow-ai
 ```
 
 Luego, para cada proyecto real, crea un workspace sibling del orquestador:
@@ -330,7 +329,7 @@ Si vas a modificar el orquestador mismo:
 ```bash
 git clone https://github.com/LiriRaid/agentflow.git
 cd agentflow
-npm install
+pnpm install
 ```
 
 Este repo local es la **fuente reusable** que tú modificas para agregar herramientas, cambiar el flujo o extender el sistema.
@@ -363,7 +362,7 @@ También crea carpetas runtime:
 ### 1. Instalar el CLI globalmente
 
 ```bash
-npm i -g @liriraid/agentflow-ai
+pnpm add -g @liriraid/agentflow-ai
 ```
 
 ### 2. Crear el workspace del orquestador
@@ -691,14 +690,12 @@ Eso asegura:
       "cli": "claude",
       "profile": "claude",
       "defaultRepo": "backend",
-      "model": "sonnet",
       "instructionsFile": "agents/BACKEND.md"
     },
     "Codex": {
       "cli": "codex",
       "profile": "codex",
       "defaultRepo": "backend",
-      "model": "gpt-5.5",
       "instructionsFile": "agents/CODEX.md"
     },
     "OpenCode": {
