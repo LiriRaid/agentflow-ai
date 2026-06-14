@@ -180,11 +180,12 @@ Revisa `orchestrator.config.json` → `agents`. Cada entrada tiene:
 ## Cómo asignar trabajo
 
 1. **Cuando el usuario pide un cambio o nueva tarea** → **NUNCA analices directamente**
-- **Si necesita análisis previo**: Crea una TASK en `QUEUE.md` asignada **EXCLUSIVAMENTE** a **OpenCode** para que explore el contexto
-- **Espera el reporte**: OpenCode escribe hallazgos en `progress/PROGRESS-OpenCode.md` y notifica en `INBOX.md`
-- **Luego implementa**: **LEE EL REPORTE DE OPENCODE** en `progress/PROGRESS-OpenCode.md` o `INBOX.md` y crea nueva TASK asignada a **Codex** (o Claude-Worker si Codex no está disponible)
+- **Si ya existe contexto suficiente** (reportes de OpenCode de esta sesión, tareas similares ya completadas, cambios que el usuario especificó exactamente): **omite OpenCode** y crea TASKs de implementación directamente asignadas a **Codex** o **Claude-Worker**. Asigna todas las tareas independientes en paralelo.
+- **Si se necesita análisis previo** (área nueva, estructura desconocida, sin reporte previo): Crea UNA TASK asignada a **OpenCode** para esa área. Asigna todas las demás tareas independientes a Codex en paralelo — no las hagas esperar a OpenCode.
+- **Espera el reporte de OpenCode solo para las tareas que dependen de él**: OpenCode escribe hallazgos en `progress/PROGRESS-OpenCode.md` y notifica en `INBOX.md`
+- **Luego implementa la tarea dependiente**: **LEE EL REPORTE DE OPENCODE** y crea la TASK de implementación asignada a **Codex**
 - **OpenCode NO implementa** — sus TASKs son **SOLO de análisis**; la implementación **SIEMPRE** va a Codex o Claude-Worker
-- **NUNCA, bajo ninguna circunstancia, analices el código del proyecto directamente tú mismo (Claude-Orquestador)** — **ESO ES TRABAJO EXCLUSIVO DE OPENCODE**. Si ya existe un reporte de OpenCode, **USA ESE CONTEXTO** para crear tareas de implementación.
+- **NUNCA analices el código del proyecto tú mismo (Claude-Orquestador)** — usa OpenCode para eso. Si ya existe un reporte, **USA ESE CONTEXTO** directamente.
 
 2. Escribe TASKs en `QUEUE.md` (formato pipe; la TUI lo lee):
     ```
@@ -198,12 +199,16 @@ Revisa `orchestrator.config.json` → `agents`. Cada entrada tiene:
 6. **La TUI inicia automáticamente** - NO necesitas presionar R ni S. La TUI detecta nuevas tasks y las lanza.
 7. **Codex es la primera opción para implementación; OpenCode es la segunda opción.** Claude-Worker es el fallback automático de Codex/OpenCode y también toma trabajo cuando hay más tareas que agentes disponibles.
 8. **REGLA CRÍTICA SOBRE ANÁLISIS:** Si OpenCode ya analizó algo y escribió su reporte en `INBOX.md` o `progress/PROGRESS-OpenCode.md`, **TÚ (Claude-Orquestador) NO DEBES VOLVER A ANALIZAR EL MISMO CÓDIGO**. Usa el reporte existente para crear tareas de implementación. Si necesitas más detalles, pide a OpenCode que haga un análisis adicional con una nueva TASK, pero **NUNCA lo hagas tú directamente**.
-9. Distribución según cantidad de TASKs independientes:
-   - **1 tarea de análisis**: OpenCode.
-   - **1 tarea de implementación**: Codex. Nunca Claude-Worker en primera instancia.
-   - **2 tareas paralelas**: OpenCode (análisis) + Codex (implementación si la spec está clara).
-   - **3+ tareas** y Codex ocupado: el excedente va a `Frontend` (repo FE) o `Backend` (repo BE) según corresponda.
-8. Si hay más TASKs que agentes disponibles, deja el resto en cola con dependencias claras o prioridad menor; no uses Gemini, Cursor ni Abacus salvo permiso explícito.
+9. **Regla de ejecución en paralelo — nunca serialices lo que puede correr en paralelo:**
+   - **Si el contexto ya existe**: asigna todas las tareas independientes en paralelo a Codex y Claude-Worker a la vez. No las pongas en cola una por una.
+   - **Si falta contexto para un área**: manda UNA TASK a OpenCode para esa área. Las demás tareas independientes van a Codex en paralelo — no esperan a OpenCode.
+   - **Distribución por volumen:**
+     - 1 tarea de análisis → OpenCode
+     - 1 tarea de implementación → Codex
+     - 2 tareas paralelas → OpenCode (análisis) + Codex (implementación con spec clara)
+     - 3+ tareas independientes con contexto claro → Codex + Frontend/Backend en paralelo
+   - **¿Cuándo el contexto es suficiente?** OpenCode ya reportó sobre esa área en esta sesión / el usuario especificó exactamente qué cambiar / tareas similares ya se completaron esta sesión.
+10. Si hay más TASKs que agentes disponibles, deja el resto en cola con dependencias claras o prioridad menor; no uses Gemini, Cursor ni Abacus salvo permiso explícito.
 9. El campo `repo` determina en qué directorio trabaja el agente. Usa siempre el valor correcto: `frontend` para trabajo de UI/cliente, `backend` para trabajo de API/servidor. Codex y OpenCode pueden trabajar en ambos repos según lo que indique la task.
 
 ## Reglas
@@ -218,10 +223,11 @@ Revisa `orchestrator.config.json` → `agents`. Cada entrada tiene:
 8. Si el usuario activa **Modo Ausencia**, revisa progreso cada 5 minutos y reasigna nuevas TASKs razonables dentro del alcance actual sin esperar confirmación intermedia.
 9. La TUI gestiona el fallback automáticamente: Codex falla → OpenCode → Claude-Worker (Frontend/Backend según repo). Solo intervén manualmente si la tarea queda marcada `failed`.
 10. Usa Engram para guardar decisiones, hallazgos, bugs y resúmenes de sesión; no dependas solo del contexto corto de la conversación.
-11. **VERIFICACIÓN OBLIGATORIA:** Antes de crear cualquier TASK de implementación, **LEE Y CONFIRMA QUE:**
-   - Existe un reporte de OpenCode en `INBOX.md` o `progress/PROGRESS-OpenCode.md` para el análisis solicitado.
-   - La TASK de implementación se basa **EXCLUSIVAMENTE** en el reporte de OpenCode.
-   - **NO** has analizado el código tú mismo (Claude-Orquestador).
+11. **VERIFICACIÓN OBLIGATORIA:** Antes de crear TASKs de implementación, confirma una de estas condiciones:
+   - Existe un reporte de OpenCode en `INBOX.md` o `progress/PROGRESS-OpenCode.md` que cubre el área, O
+   - El usuario especificó con suficiente detalle qué cambiar (archivos exactos, valores, cambios concretos), O
+   - Trabajo similar ya se completó esta sesión (el contexto ya está establecido).
+   - **NO** has analizado el código tú mismo (Claude-Orquestador) en ningún caso.
 11. Para cambios grandes, usa `openspec/changes/<change-name>/` para proposal, spec, design, tasks y verify; no dejes todo solo en la conversación.
 12. No asumas bypass total o autoaceptación de cambios en los agentes. Claude debe seguir siendo la autoridad final para validar el resultado esperado antes de que el usuario dé la aprobación definitiva.
 
