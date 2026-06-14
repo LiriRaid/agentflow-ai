@@ -1183,20 +1183,12 @@ function generateBrief(task) {
     if (taskMatch) taskEntry = taskMatch[0];
   }
 
-  // Global developer standards from the user's ~/.claude/CLAUDE.md.
-  // Extracts stack + package manager sections so Codex/OpenCode follow the same rules.
+  // Global developer standards — read the user's ~/.claude/CLAUDE.md verbatim.
+  // Each developer has their own standards there; we don't parse specific sections.
   let globalStandards = "";
   const globalClaude = path.join(GLOBAL_CLAUDE_DIR, "CLAUDE.md");
   if (fs.existsSync(globalClaude)) {
-    const raw = fs.readFileSync(globalClaude, "utf-8");
-    const sections = ["My stack", "Package managers", "Response preferences"];
-    const extracted = sections
-      .map((s) => {
-        const m = raw.match(new RegExp(`## ${s}[\\s\\S]*?(?=\\n## |\\n# |$)`, "i"));
-        return m ? m[0].trim() : null;
-      })
-      .filter(Boolean);
-    if (extracted.length) globalStandards = extracted.join("\n\n");
+    globalStandards = fs.readFileSync(globalClaude, "utf-8").trim();
   }
 
   // Project plan — if `<projectName>-plan.md` or `PLAN.md` exists in the workspace,
