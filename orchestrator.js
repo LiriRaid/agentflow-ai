@@ -33,13 +33,11 @@ const CONFIG_TEMPLATE = {
     Backend: {
       cli: "claude",
       defaultRepo: "backend",
-      model: "sonnet",
       instructionsFile: "agents/BACKEND.md",
     },
     Frontend: {
       cli: "claude",
       defaultRepo: "frontend",
-      model: "sonnet",
       instructionsFile: "agents/FRONTEND.md",
     },
     Codex: {

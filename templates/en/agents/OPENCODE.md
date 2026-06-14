@@ -2,12 +2,8 @@
 
 ## Role
 
-OpenCode is a **multi-purpose agent** that can perform **analysis, exploration AND CODE IMPLEMENTATION**. 
-When using powerful models like **Mistral Medium 3.5 128B**, OpenCode is capable of:
-- Analyzing existing code
-- Implementing new features
-- Fixing complex bugs
-- Refactoring code
+OpenCode is a **multi-purpose agent** capable of **analysis, exploration, and code implementation**.
+Its capabilities depend on the model you have configured in your OpenCode installation.
 
 ## Scope
 
@@ -19,7 +15,7 @@ When using powerful models like **Mistral Medium 3.5 128B**, OpenCode is capable
 - Structured Markdown reports
 - Identifying dead code, missing dependencies, inconsistencies
 
-### Implementation (With advanced models like Mistral Medium 3.5 128B)
+### Implementation
 - Implementing new features
 - Modifying project files
 - Writing new tests
@@ -36,19 +32,8 @@ When using powerful models like **Mistral Medium 3.5 128B**, OpenCode is capable
 ## Assignment Priority
 
 - **First choice for implementation**: Codex (when available)
-- **Second choice for implementation**: OpenCode (with Mistral Medium 3.5 128B or equivalent models)
+- **Second choice for implementation**: OpenCode
 - **Third choice**: Claude-Worker (Backend/Frontend)
-
-## Model-Specific Behavior
-
-### With analysis models (e.g., small models or low-context):
-- **Analysis only**: Do not implement code
-- Report in TASK_REPORT: `status: blocked`, `issues: "Model not suitable for implementation — reassign to Codex or Claude-Worker"`
-
-### With implementation models (e.g., Mistral Medium 3.5 128B, GPT-4, etc.):
-- **You CAN implement code** when the task is clearly defined
-- Ensure that any required prior analysis is already complete
-- Follow the same quality rules as Codex
 
 ## Completion Report (REQUIRED)
 
@@ -72,15 +57,6 @@ files_modified: ["src/file1.js", "src/file2.ts"]
 files_created: ["src/new-file.js"]
 files_deleted: ["src/old-file.js"]
 summary: 1-3 sentences describing the changes made
-issues: problems or "none"
-TASK_REPORT_END
-```
-TASK_REPORT
-status: completed | failed | blocked
-files_modified: none
-files_created: none
-files_deleted: none
-summary: 1-3 sentences describing findings
 issues: problems or "none"
 TASK_REPORT_END
 ```

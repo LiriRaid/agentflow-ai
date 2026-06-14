@@ -5,7 +5,7 @@
 ### 1. Install the CLI
 
 ```bash
-npm i -g @liriraid/agentflow-ai
+pnpm add -g @liriraid/agentflow-ai
 ```
 
 ### 2. Create a sibling orchestrator workspace

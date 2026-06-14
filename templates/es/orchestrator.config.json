@@ -50,49 +50,42 @@
       "cli": "claude",
       "profile": "claude",
       "defaultRepo": "backend",
-      "model": "sonnet",
       "instructionsFile": "agents/BACKEND.md"
     },
     "Frontend": {
       "cli": "claude",
       "profile": "claude",
       "defaultRepo": "frontend",
-      "model": "sonnet",
       "instructionsFile": "agents/FRONTEND.md"
     },
     "Codex": {
       "cli": "codex",
       "profile": "codex",
       "defaultRepo": "frontend",
-      "model": "gpt-5.5",
       "instructionsFile": "agents/CODEX.md"
     },
-"Gemini": {
+    "Gemini": {
       "cli": "gemini",
       "profile": "gemini",
       "defaultRepo": "frontend",
-      "model": "auto",
       "instructionsFile": "agents/GEMINI.md"
     },
     "OpenCode": {
       "cli": "opencode",
       "profile": "opencode",
       "defaultRepo": "frontend",
-      "model": "auto",
       "instructionsFile": "agents/OPENCODE.md"
     },
     "Cursor": {
       "cli": "cursor",
       "profile": "cursor",
       "defaultRepo": "backend",
-      "model": "auto",
       "instructionsFile": "agents/CURSOR.md"
     },
     "Abacus": {
       "cli": "abacusai",
       "profile": "abacusai",
       "defaultRepo": "backend",
-      "model": "auto",
       "instructionsFile": "agents/ABACUS.md"
     }
   }

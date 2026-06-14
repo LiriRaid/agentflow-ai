@@ -1,13 +1,12 @@
 {
-  "projectName": "PROJECT_NAME_HERE",
+  "projectName": "Test Project",
   "workspaceLanguage": "en",
   "maxConcurrent": 5,
-  "pollIntervalSeconds": 30,
+  "pollIntervalSeconds": 5,
   "taskTimeoutMinutes": 30,
-
   "repos": {
-    "backend": "ABSOLUTE_PATH_TO_BACKEND",
-    "frontend": "ABSOLUTE_PATH_TO_FRONTEND"
+    "backend": "C:\\Users\\liria\\Proyectos\\test-backend",
+    "frontend": "C:\\Users\\liria\\Proyectos\\test-frontend"
   },
   "agentProfiles": {
     "claude": {
@@ -16,21 +15,21 @@
       "skillsDir": ".claude/skills",
       "primary": true,
       "useForOrchestration": true,
-      "notes": "Main project profile. Prioritizes local repo configuration."
+      "notes": "Primary profile for project orchestration."
     },
     "codex": {
       "enabled": true,
       "localConfigDir": ".codex",
       "primary": false,
       "useForOrchestration": false,
-      "notes": "Support profile for structured implementation and focused work."
+      "notes": "Support profile for structured implementation."
     },
     "opencode": {
       "enabled": true,
       "localConfigDir": ".opencode",
       "primary": false,
       "useForOrchestration": false,
-      "notes": "Support profile for exploration, audits, context, and scoped implementation."
+      "notes": "Support profile for exploration and implementation. Uses whatever model you have configured in OpenCode."
     },
     "gemini": {
       "enabled": false,
@@ -61,20 +60,20 @@
     "Codex": {
       "cli": "codex",
       "profile": "codex",
-      "defaultRepo": "frontend",
+      "defaultRepo": "backend",
       "instructionsFile": "agents/CODEX.md"
-    },
-    "Gemini": {
-      "cli": "gemini",
-      "profile": "gemini",
-      "defaultRepo": "frontend",
-      "instructionsFile": "agents/GEMINI.md"
     },
     "OpenCode": {
       "cli": "opencode",
       "profile": "opencode",
       "defaultRepo": "frontend",
       "instructionsFile": "agents/OPENCODE.md"
+    },
+    "Gemini": {
+      "cli": "gemini",
+      "profile": "gemini",
+      "defaultRepo": "frontend",
+      "instructionsFile": "agents/GEMINI.md"
     },
     "Cursor": {
       "cli": "cursor",
