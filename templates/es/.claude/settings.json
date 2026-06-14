@@ -6,6 +6,11 @@
           {
             "type": "command",
             "command": "node .claude/hooks/notify-check.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/watch-notify.js",
+            "asyncRewake": true
           }
         ]
       }
