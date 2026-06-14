@@ -5,7 +5,7 @@
 ### 1. Instalar el CLI globalmente
 
 ```bash
-npm i -g @liriraid/agentflow-ai
+pnpm add -g @liriraid/agentflow-ai
 ```
 
 ### 2. Crear un workspace hermano para un proyecto

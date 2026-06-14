@@ -122,7 +122,7 @@ del .away-mode
 The TUI handles fallback automatically following this chain:
 
 ```
-Codex fails → OpenCode (with Mistral Medium 3.5 128B) → Frontend (frontend repo) or Backend (backend repo)
+Codex fails → OpenCode → Frontend (frontend repo) or Backend (backend repo)
 ```
 Codex fails  →  Frontend (frontend repo) or Backend (backend repo) directly
 ```
@@ -149,14 +149,13 @@ Default agent summary:
 | Backend | claude | Backend code through Claude-Worker |
 | Frontend | claude | Broad frontend work through Claude-Worker |
 | Codex | codex | **First choice for implementation**; structured implementation, tests, docs, narrow frontend support |
-| OpenCode | opencode | **Second choice for implementation** (with Mistral Medium 3.5 128B); exploration, audits, structured reports |
+| OpenCode | opencode | **Second choice for implementation**; exploration, audits, structured reports |
 | Gemini | gemini | Optional audits and reviews only when explicitly enabled |
 | Cursor | cursor | Optional mechanical bulk edits only when explicitly enabled |
 | Abacus | abacusai | Optional small focused tasks only when explicitly enabled |
 
 **Notes about OpenCode:**
-- When OpenCode uses **Mistral Medium 3.5 128B or equivalent models**, it can implement code.
-- If the model is not suitable for implementation, OpenCode will only perform analysis and report as `blocked`.
+- OpenCode can perform both analysis and implementation — capabilities depend on the model you have configured in your OpenCode installation.
 
 ## How To Assign Work
 
@@ -184,9 +183,9 @@ Rules:
 
 Routing preferences:
 
-1. Use OpenCode for exploration, audits, and **implementation (with Mistral Medium 3.5 128B or advanced models)**.
+1. Use OpenCode for exploration, audits, and **implementation**.
 2. Use Codex as the **primary implementation agent** when the spec is clear.
-3. Use OpenCode as the **secondary implementation agent** (when using advanced models).
+3. Use OpenCode as the **secondary implementation agent**.
 4. Keep Claude-Worker available as automatic fallback for Codex/OpenCode and for overflow tasks.
 5. For frontend, use Codex for narrow tasks and Frontend/Claude-Worker for broad UI work.
 6. Do not assign all tasks to Claude just because Claude is the orchestrator.

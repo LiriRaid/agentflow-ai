@@ -53,7 +53,7 @@ Default routing should put executable work on Codex or OpenCode first when they 
 
 - `claude` is the primary profile.
 - `codex` is the primary implementation profile
-- `opencode` is a support profile that **can implement code when using advanced models** (e.g., Mistral Medium 3.5 128B)
+- `opencode` is a support profile that **can implement code** depending on the model configured in your OpenCode installation
 - Other profiles can exist while remaining disabled by default.
 
 ## Suggested Local Folders
@@ -72,5 +72,5 @@ If both global and local agent configuration exist, the local project config sho
 
 - Claude uses `.claude/skills/` as the main project skill base.
 - Codex and OpenCode can have their own local config even if they do not use the same skill model today.
-- OpenCode can explore, audit, and **implement code when using advanced models** like Mistral Medium 3.5 128B.
+- OpenCode can explore, audit, and **implement code** — capabilities depend on your configured model.
 - The design should allow richer local layers for additional agents later.
