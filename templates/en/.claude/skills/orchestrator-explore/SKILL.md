@@ -16,7 +16,7 @@ Gather useful context before creating TASKs or OpenSpec artifacts.
 
 ## Critical Rules
 
-- Understand the user's exact scope first.
+- Understand the user's exact scope first — clarify by asking the user directly, **NOT by reading project files yourself**.
 - Prefer exploration before implementation when context is unclear.
 - Use **ONLY OpenCode** as the exploration agent when deep codebase analysis is needed — its role is **EXCLUSIVELY analysis**, **NEVER implementation**.
 - When delegating exploration to OpenCode, include in the brief exactly what it must report: flows, dependencies, architecture findings, inconsistencies, etc.

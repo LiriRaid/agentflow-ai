@@ -1013,35 +1013,6 @@ function parseCompletedFromFile() {
 }
 
 const loggedUnknownAgents = new Set();
-let queueWatcher = null;
-
-function setupQueueWatcher() {
-  if (!fs.existsSync(QUEUE_FILE)) return;
-  
-  if (queueWatcher) {
-    try { queueWatcher.close(); } catch {}
-    queueWatcher = null;
-  }
-  
-  try {
-    queueWatcher = fs.watch(QUEUE_FILE, { persistent: false }, (eventType, filename) => {
-      if (eventType === 'change' && filename === path.basename(QUEUE_FILE)) {
-        log('DEBUG', `QUEUE.md changed, reloading queue immediately`);
-        reloadQueue();
-        scheduleNext();
-        renderDashboard();
-      }
-    });
-    queueWatcher.on('error', (err) => {
-      log('WARN', `fs.watch failed for QUEUE.md: ${err.message}, falling back to polling`);
-      queueWatcher = null;
-    });
-    log('INFO', 'Realtime QUEUE.md watcher enabled');
-  } catch (err) {
-    log('WARN', `Failed to setup QUEUE.md watcher: ${err.message}, using polling`);
-    queueWatcher = null;
-  }
-}
 
 function reloadQueue() {
   state.queue = parseQueue();
@@ -1444,7 +1415,7 @@ function launchAgent(task) {
                 if (txt) {
                   for (const l of txt.split("\n").slice(-3))
                     appendToAgent(agentName, l.slice(0, 120));
-                  ag.lastLine = txt.split("\n").pop().slice(0, 80);
+                  ag.lastLine = (txt.split("\n").pop() || "").slice(0, 80);
                 }
               }
               if (block.type === "tool_use") {
@@ -1708,6 +1679,7 @@ function failTask(task, agentName, code) {
     task.status = "failed";
     ag.lastLine = L.lastFailed(task.id);
     log("ERROR", L.logPermanentFail(task.id, retries));
+    updateQueueFile(task);
     writeNotifyFile(L.notifyPermanentFail(timestamp(), task.id, agentName));
   } else {
     task.status = "pending";
@@ -1893,6 +1865,7 @@ function getClaudeFallbackAgent(task) {
 
 function getAlternativeSupportAgent(failedAgentName) {
   if (failedAgentName === "OpenCode") return "Codex";
+  if (failedAgentName === "Codex") return "OpenCode";
   return null;
 }
 
@@ -1930,43 +1903,7 @@ function tryFallbackToAlternative(task, failedAgentName, reason) {
     log("WARN", L.logReassignWarn(task.id, targetAgent));
   }
 
-  // Notificar a Claude (sesión principal) cuando hay fallback
-  notifyClaudeOfFallback(task, failedAgentName, targetAgent, reason);
   return true;
-}
-
-// ============================================================================
-// CLAUDE FALLBACK NOTIFIER — avisa a Claude principal cuando hay reasignación
-// ============================================================================
-function notifyClaudeOfFallback(task, fromAgent, toAgent, reason) {
-  const lang = WORKSPACE_LANGUAGE;
-  const prompt = lang === 'es'
-    ? `⚠️ FALLBACK: La tarea "${task.id}: ${task.title}" falló en ${fromAgent} (${reason}) y fue reasignada a ${toAgent}.
-
-Estado actual:
-- QUEUE.md tiene ahora la tarea asignada a ${toAgent}
-- El agente ${toAgent} está procediendo automáticamente
-
- Acción: No necesitas hacer nada — solo toma nota del cambio. El orquestador将继续 automáticamente.
-Si quieres revisar el progreso, lee INBOX.md o STATUS.md.`
-    : `⚠️ FALLBACK: Task "${task.id}: ${task.title}" failed on ${fromAgent} (${reason}) and was reassigned to ${toAgent}.
-
-Current state:
-- QUEUE.md now has the task assigned to ${toAgent}
-- Agent ${toAgent} is proceeding automatically
-
-Action: You don't need to do anything — just take note of the change. The orchestrator will continue automatically.
-If you want to check progress, read INBOX.md or STATUS.md.`;
-
-  const logPath = path.join(LOG_DIR, `fallback-notify-${Date.now()}.log`);
-  try {
-    const logFd = fs.openSync(logPath, 'a');
-    const child = spawn('claude', ['-p', prompt, '--add-dir', WORKSPACE, '--dangerously-skip-permissions'], {
-      cwd: WORKSPACE, stdio: ['ignore', logFd, logFd], shell: true, windowsHide: true, detached: true
-    });
-    fs.closeSync(logFd);
-    child.unref();
-  } catch {}
 }
 
 // ============================================================================
@@ -2073,7 +2010,6 @@ function setupFallbackQueueWatcher() {
 }
 
 startQueueWatcher();
-setupQueueWatcher();
 
 // Slow fallback (5 min) — only runs if there is actually pending work or busy agents
 // fs.watch handles real-time; this is just a safety net
@@ -2112,7 +2048,7 @@ function runAwayModeCheck() {
   const completedCount = (state.completed || []).length;
   const hasWork = pendingTasks.length > 0 || inProgressTasks.length > 0 || busy;
 
-  if (!hasWork && completedCount > 0) {
+  if (!hasWork) {
     try { fs.unlinkSync(AWAY_MODE_FILE); } catch {}
     deactivateAwayMode();
 
