@@ -448,18 +448,14 @@ function mount() {
 
 	if (process.stdout.isTTY) {
 		process.stdout.on('resize', () => {
-			const nextColumns = process.stdout.columns ?? 0;
-			const shrinking = nextColumns > 0 && lastColumns > 0 && nextColumns < lastColumns;
-			lastColumns = nextColumns;
+			lastColumns = process.stdout.columns ?? 0;
 			isResizing = true;
 			if (resizeTimer) clearTimeout(resizeTimer);
 			resizeTimer = setTimeout(() => {
-				if (shrinking) {
-					clearTerminal();
-					if (inkApp) {
-						inkApp.unmount();
-						inkApp = null;
-					}
+				clearTerminal();
+				if (inkApp) {
+					inkApp.unmount();
+					inkApp = null;
 				}
 				isResizing = false;
 				refresh();

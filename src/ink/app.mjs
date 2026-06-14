@@ -200,7 +200,7 @@ export function App({snapshot, paused = false, onAction}) {
 			h(
 				Panel,
 				{title: text.summary, width: isCompact ? '100%' : '28%'},
-				...overview.map(line => h(Text, {key: line}, truncate(line, summaryWidth)))
+				...overview.map((line, i) => h(Text, {key: i}, truncate(line, summaryWidth)))
 			),
 			h(
 				Panel,
@@ -220,7 +220,7 @@ export function App({snapshot, paused = false, onAction}) {
 				{title: text.log, width: isCompact ? '100%' : '35%'},
 				...snapshot.logs
 					.slice(-6)
-					.map(entry => h(Text, {key: entry, color: COLORS.muted}, truncate(entry, logWidth)))
+					.map((entry, i) => h(Text, {key: i, color: COLORS.muted}, truncate(entry, logWidth)))
 			)
 		),
 		h(
