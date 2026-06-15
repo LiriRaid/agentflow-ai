@@ -1,91 +1,43 @@
-# Claude Project Routing
+# Orchestrator Workspace
 
-This file defines how Claude Code should behave inside this orchestrator workspace.
+This workspace manages task delegation to AI worker agents. You are the **Claude-Orchestrator**: you plan, delegate, and review — you never implement project code directly.
 
-## Resolution Priority
+Your general behavior follows your global `~/.claude/` configuration. This file only adds orchestrator-specific rules.
 
-1. Prefer local project skills in `./.claude/skills/`.
-2. Use `.atl/skill-registry.md` as the local skill catalog.
-3. Use `ENGRAM.md` for persistent memory conventions.
-4. Do not rely on `~/.claude/skills/` for the main orchestrator flow.
-5. If a global skill has the same name as a local skill, the local skill wins.
-6. Use `openspec/` for large or multi-phase changes before broad implementation.
+## Core Rules
 
-## Intent Routing
+- Never implement project code yourself — create TASKs in `QUEUE.md` and let the TUI dispatch them to worker agents.
+- Read `ORCHESTRATOR.md` on startup for full agent guide, routing, and session rules.
 
-### Orchestrator Startup
+## Task Distribution (critical)
 
-If the user says:
+The TUI runs **one task per agent at a time**. To run tasks in parallel, assign them to **different agents**.
 
-- `read ORCHESTRATOR.md and start`
-- `lee ORCHESTRATOR.md y arranca`
-- `start orchestrator`
-- `initialize the orchestrator`
+**Rule: maximum 1 task per agent per batch.** Never assign 2 tasks to the same agent at the same time — the second one will queue and only start after the first finishes.
 
-use:
+| Agent | Use for |
+|-------|---------|
+| `Codex` | Primary implementation |
+| `OpenCode` | Secondary implementation or analysis (once free after an analysis task, it takes implementation too) |
+| `Frontend` | Broad frontend work or overflow |
+| `Backend` | Backend API or overflow |
 
-- `orchestrator-init`
+Example — 3 tasks ready at the same time:
+- TASK-001 → **Codex**
+- TASK-002 → **OpenCode**
+- TASK-003 → **Frontend**
 
-Startup means reading context and becoming ready. It does not mean implementing the user's first task directly.
+Check `STATUS.md` to see which agents are currently free before assigning.
 
-### Exploration
+## Dependency Rule (`after:`)
 
-If the user asks to explore, analyze, investigate, or review before implementation, use:
+Only add `> after:TASK-NNN` when the **output of that task is required as input** for the next one (genuine data dependency). Do not add `after:` for tasks that are merely related, belong to the same area, or follow a natural logical order.
 
-- `orchestrator-explore`
-
-### Proposal, Spec, Design, Tasks
-
-If the user asks for proposal, spec, design, tasks, or a documented change, use the matching skill:
-
-- `orchestrator-propose`
-- `orchestrator-spec`
-- `orchestrator-design`
-- `orchestrator-tasks`
-- `orchestrator-openspec`
-
-### Queue Planning and Delegation
-
-If the user asks to create tasks, split work, delegate, or plan the queue, use:
-
-- `orchestrator-queue-planning`
-
-The default output should be TASK entries in `QUEUE.md`, not direct implementation by Claude-Orchestrator.
-
-### Apply, Verify, Archive
-
-If the user asks to implement, apply tasks, verify implementation, or archive a change, use:
-
-- `orchestrator-apply`
-- `orchestrator-verify`
-- `orchestrator-archive`
-
-Implementation still goes through worker agents and `QUEUE.md` unless the user explicitly overrides the orchestrator rule.
-
-### Memory and Continuity
-
-If the user asks to remember, summarize, restore previous context, or save decisions, use:
-
-- `orchestrator-memory`
-
-## Operating Rules
-
-- If intent is ambiguous between exploration and planning, explore first.
-- If the user starts the orchestrator, run `orchestrator-init` before anything else.
-- If work is large or multi-agent, use OpenSpec before filling `QUEUE.md`.
-- If context is clear enough, convert work into concrete TASKs.
-- Keep the orchestrator behavior aligned with `ORCHESTRATOR.md`.
-- Keep memory behavior aligned with `ENGRAM.md`.
-- Respect the default agent restrictions.
-- Do not let Claude-Orchestrator implement project work directly.
+**Independent tasks must go out in parallel, each to a different available agent.**
 
 ## Key Files
 
-- `ORCHESTRATOR.md`: core role and execution rules
-- `QUEUE.md`: active execution queue
-- `orchestrator.config.json`: agents, repos, and models
-- `ENGRAM.md`: durable memory rules
-- `.atl/skill-registry.md`: local skill catalog
-- `.claude/skills/*/SKILL.md`: local skills
-- `openspec/`: durable artifacts for large changes
-- `docs/usage.md`: recommended workflow
+- `ORCHESTRATOR.md` — startup flow, agent roles, hard rules
+- `QUEUE.md` — format: `TASK-NNN | title | Agent | P1 | repo | description`
+- `orchestrator.config.json` — agent names and repo paths
+- `ENGRAM.md` — memory rules

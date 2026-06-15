@@ -36,14 +36,16 @@ When the user requests work after startup:
 
 1. Do not implement the work in the interactive Claude session.
 2. Convert the request into one or more TASKs in `QUEUE.md`.
-3. Assign by role:
-   - `OpenCode` → **analysis only** (exploration, audits, reports — does NOT modify code)
-   - `Codex` → **primary implementation** (code changes, tests, docs)
-4. Assign a Claude-Worker (`Frontend` or `Backend`) **only** when:
-   - **Multiple independent tasks exist** AND Codex is already occupied, OR
-   - A task has **permanently failed** in Codex — then Claude-Worker takes it as last resort.
+3. Each agent runs **one task at a time**. For parallel execution, assign tasks to different agents.
+4. Default assignment order:
+   - `Codex` → primary implementation (code changes, tests, docs)
+   - `OpenCode` → secondary implementation or analysis (exploration, audits, reports)
+   - `Frontend` → broad frontend work or overflow when Codex and OpenCode are both assigned
+   - `Backend` → backend API work or overflow
 
-The TUI handles automatic fallback: Codex fails → Claude-Worker directly. You only need to manually assign Claude-Workers for load balancing (case a) or when the TUI marks a task as permanently `failed` (case b).
+**When there are multiple independent tasks, distribute them across agents from the start.** Do not assign all tasks to Codex — they will queue up and run one by one.
+
+The TUI handles automatic fallback on failure: Codex fails → Claude-Worker directly. You do not need to manually reassign on failure.
 
 The `repo` field determines the working directory: `frontend` for UI/client work, `backend` for API/server work. Codex and OpenCode can work in either repo depending on the task.
 
@@ -179,11 +181,10 @@ Default agent summary:
 ## How To Assign Work
 
 1. **When the user asks for a change or new task** → **NEVER analyze directly yourself**
-- **If context already exists** (OpenCode reports from this session, completed similar tasks, user-specified exact changes): **skip OpenCode** and create implementation TASKs directly assigned to **Codex** or **Claude-Worker**. Assign all independent tasks in parallel.
-- **If prior analysis is needed** (new area, unknown structure, no prior report): Create ONE TASK in `QUEUE.md` assigned to **OpenCode** for that area. Assign all other independent tasks to Codex in parallel — do not make them wait for OpenCode.
+- **If context already exists** (OpenCode reports from this session, completed similar tasks, user-specified exact changes): **skip OpenCode** and create implementation TASKs distributed across available agents in parallel.
+- **If prior analysis is needed** (new area, unknown structure, no prior report): Create ONE TASK assigned to **OpenCode** for that area. Assign all other independent tasks to other agents in parallel — do not make them wait for OpenCode.
 - **Wait for the OpenCode report only for the tasks that depend on it**: OpenCode writes findings to `progress/PROGRESS-OpenCode.md` and notifies in `INBOX.md`
-- **Then implement the dependent task**: **READ OPENCODE'S REPORT** and create the implementation TASK assigned to **Codex**
-- **OpenCode DOES NOT implement** — its TASKs are **ONLY for analysis**; implementation **ALWAYS** goes to Codex or Claude-Worker
+- **Then implement**: **READ OPENCODE'S REPORT** and create implementation TASKs distributed across all available agents — Codex, OpenCode (now free after analysis), Frontend, Backend.
 - **NEVER analyze the project code yourself (Claude-Orchestrator)** — use OpenCode for that. If a report already exists, **USE THAT CONTEXT** directly.
 
 2. Write TASKs in `QUEUE.md` with this format:
@@ -196,19 +197,20 @@ Rules:
 
 1. `Agent` must match a key in `orchestrator.config.json.agents`.
 2. `repo` must match a key in `orchestrator.config.json.repos`.
-3. Add `> after:TASK-NNN` at the end of the description for dependencies.
+3. Add `> after:TASK-NNN` at the end of the description **only when the output of that task is genuinely required as input for the next one** (real data dependency). Do not add `after:` for tasks that are merely related or follow a natural order — independent tasks must run in parallel.
 4. Use `TASKS.md` under `### TASK-NNN` for longer task specs when needed.
 5. Use `briefs/TASK-NNN-BRIEF.md` for very detailed briefs when needed.
 6. **The TUI starts automatically** - you don't need to press R or S. The TUI detects new tasks and launches them.
 
 Routing preferences:
 
-1. Use OpenCode for exploration, audits, and **implementation**.
-2. Use Codex as the **primary implementation agent** when the spec is clear.
-3. Use OpenCode as the **secondary implementation agent**.
-4. Keep Claude-Worker available as automatic fallback for Codex/OpenCode and for overflow tasks.
-5. For frontend, use Codex for narrow tasks and Frontend/Claude-Worker for broad UI work.
-6. Do not assign all tasks to Claude just because Claude is the orchestrator.
+1. **Maximum 1 task per agent per batch.** When creating multiple tasks at once, assign each to a different available agent. Never assign 2 tasks to the same agent in the same batch — the second will queue and wait.
+   - Example with 3 tasks: TASK-001 → Codex, TASK-002 → OpenCode, TASK-003 → Frontend
+   - Check `STATUS.md` to see which agents are free before assigning.
+2. Use Codex as the **primary implementation agent**.
+3. Use OpenCode as the **secondary implementation agent** (also handles analysis).
+4. Use Frontend/Backend for overflow or broad UI/API work.
+5. Do not assign all tasks to Codex just because it is the primary — spread the load.
 
 ## Hard Rules
 

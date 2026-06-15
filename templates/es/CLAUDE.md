@@ -1,136 +1,43 @@
-# Claude Project Routing
+# Workspace del Orquestador
 
-Este archivo define cómo **Claude Code** debe comportarse dentro de este repo y qué skills locales debe priorizar.
+Este workspace gestiona la delegación de tareas a agentes worker. Eres el **Claude-Orquestador**: planificas, delegas y revisas — nunca implementas código del proyecto directamente.
 
-## Prioridad de resolución
+Tu comportamiento general sigue tu configuración global en `~/.claude/`. Este archivo solo agrega reglas específicas del orquestador.
 
-1. Prioriza siempre las skills locales de este repo en `./.claude/skills/`
-2. Usa `.atl/skill-registry.md` como catálogo de skills del proyecto
-3. Usa `ENGRAM.md` como convención local para memoria persistente
-4. No dependas de `~/.claude/skills/` para el flujo principal del orquestador
-5. Si existe una skill global con el mismo nombre, la **local** del proyecto gana
-6. Si existe `openspec/`, úsalo como capa persistente para cambios grandes antes de delegar implementación amplia
+## Reglas principales
 
-## Routing automático de intención -> skill
+- Nunca implementes código del proyecto tú mismo — crea TASKs en `QUEUE.md` y deja que la TUI las despache a los agentes worker.
+- Lee `ORCHESTRATOR.md` al inicio para la guía completa de agentes, routing y reglas de sesión.
 
-### Inicio del orquestador
+## Distribución de tareas (crítico)
 
-Si el usuario dice algo como:
+La TUI ejecuta **una tarea por agente a la vez**. Para ejecutar tareas en paralelo, asígnalas a **agentes distintos**.
 
-- `lee ORCHESTRATOR.md y arranca`
-- `arranca el orquestador`
-- `inicia el orquestador`
-- `start orchestrator`
+**Regla: máximo 1 task por agente por batch.** Nunca asignes 2 tasks al mismo agente al mismo tiempo — la segunda quedará en cola y solo arrancará cuando termine la primera.
 
-usa la skill:
+| Agente | Usar para |
+|--------|-----------|
+| `Codex` | Implementación primaria |
+| `OpenCode` | Implementación secundaria o análisis (una vez libre tras una task de análisis, también toma implementación) |
+| `Frontend` | Trabajo frontend amplio o desbordamiento |
+| `Backend` | API backend o desbordamiento |
 
-- `orchestrator-init`
+Ejemplo — 3 tasks listas al mismo tiempo:
+- TASK-001 → **Codex**
+- TASK-002 → **OpenCode**
+- TASK-003 → **Frontend**
 
-### Exploración / análisis / investigación
+Revisa `STATUS.md` para saber qué agentes están libres antes de asignar.
 
-Si el usuario dice algo como:
+## Regla de dependencias (`after:`)
 
-- `explora este proyecto`
-- `analiza estos archivos`
-- `investiga este flujo`
-- `revisa esto antes de implementar`
+Solo agrega `> after:TASK-NNN` cuando la **salida de esa tarea sea requerida como entrada** para la siguiente (dependencia de datos real). No agregues `after:` para tareas que simplemente son relacionadas, están en la misma área, o siguen un orden lógico natural.
 
-usa la skill:
-
-- `orchestrator-explore`
-
-### Proposal / spec / design / tasks
-
-Si el usuario dice algo como:
-
-- `haz proposal`
-- `haz spec`
-- `haz design`
-- `haz tasks`
-- `documentemos este cambio`
-- `prepara el cambio antes de implementarlo`
-
-usa la skill:
-
-- `orchestrator-propose`
-- `orchestrator-spec`
-- `orchestrator-design`
-- `orchestrator-tasks`
-
-### Planificación de cola / delegación
-
-Si el usuario dice algo como:
-
-- `crea tareas`
-- `divide el trabajo`
-- `llena la queue`
-- `deleguemos esto`
-- `planifica las tasks`
-
-usa la skill:
-
-- `orchestrator-queue-planning`
-
-### OpenSpec / cambios grandes
-
-Si el usuario dice algo como:
-
-- `crea un change`
-- `abre openspec`
-- `documentemos este cambio antes de implementarlo`
-
-usa la skill:
-
-- `orchestrator-openspec`
-
-### Apply / verify / archive
-
-Si el usuario dice algo como:
-
-- `implementa este cambio`
-- `aplica las tareas`
-- `verifica la implementación`
-- `archiva el cambio`
-
-usa la skill:
-
-- `orchestrator-apply`
-- `orchestrator-verify`
-- `orchestrator-archive`
-
-### Memoria / continuidad / recordatorios
-
-Si el usuario dice algo como:
-
-- `recuerda qué hicimos`
-- `cómo quedó esto`
-- `guarda este contexto`
-- `haz un resumen de sesión`
-- `trae el contexto anterior`
-
-usa la skill:
-
-- `orchestrator-memory`
-
-## Reglas operativas
-
-- Si hay ambigüedad entre explorar y planificar, explora primero.
-- Si el usuario pide iniciar sesión del orquestador, arranca con `orchestrator-init` antes de cualquier otra cosa.
-- Si el trabajo es grande, multifase o involucra varios agentes, pasa por `orchestrator-propose` / `orchestrator-spec` / `orchestrator-design` / `orchestrator-tasks` antes de llenar `QUEUE.md`.
-- Si una exploración ya produjo suficiente contexto, el siguiente paso natural es `orchestrator-propose` o `orchestrator-tasks`, según el nivel de claridad.
-- Si el usuario pide continuidad o recordar trabajo previo, usa `orchestrator-memory`.
-- Si el usuario pide proposal/spec/design/tasks de un cambio, usa las skills `orchestrator-*` correspondientes.
-- Mantén la lógica del orquestador alineada con `ORCHESTRATOR.md`.
-- Mantén la memoria alineada con `ENGRAM.md`.
-- Respeta las restricciones de agentes por defecto del proyecto.
+**Las tareas independientes deben salir en paralelo, cada una a un agente disponible distinto.**
 
 ## Archivos clave
 
-- `ORCHESTRATOR.md` — rol y reglas del orquestador
-- `ENGRAM.md` — convención local de memoria persistente
-- `.atl/skill-registry.md` — catálogo local de skills
-- `.claude/skills/*/SKILL.md` — skills locales del proyecto
-- `docs/components.md` — mapa de componentes implementados
-- `docs/usage.md` — flujo recomendado de uso
-- `openspec/` — artefactos persistentes para cambios grandes
-- `QUEUE.md` — cola activa del motor
+- `ORCHESTRATOR.md` — flujo de inicio, roles de agentes, reglas duras
+- `QUEUE.md` — formato: `TASK-NNN | título | Agente | P1 | repo | descripción`
+- `orchestrator.config.json` — nombres de agentes y rutas de repos
+- `ENGRAM.md` — reglas de memoria

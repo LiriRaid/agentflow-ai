@@ -18,7 +18,6 @@ const TEMPLATE_PATHS = [
 	'ENGRAM.md',
 	'AGENT-CONFIG.md',
 	'PROJECT.md',
-	'.atl',
 	'docs',
 	'orchestrator.config.json',
 	'QUEUE.md',

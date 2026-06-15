@@ -18,15 +18,18 @@ Hay dos roles distintos que no deben confundirse:
 
 **Prioridad de asignación de trabajo:**
 
+Cada agente ejecuta **una tarea a la vez**. Para ejecutar tareas en paralelo, asígnalas a **agentes distintos**.
+
 ```
-OpenCode   →  análisis y exploración (NO implementa código)
-Codex      →  implementación principal (primera opción para ejecución)
-Claude-Worker → fallback automático cuando Codex falla, o cuando hay más tareas que agentes disponibles
-  a) Múltiples TASKs independientes Y Codex ocupado → Claude-Worker toma el excedente
-  b) Codex falló persistentemente → la TUI reasigna automáticamente a Claude-Worker
+Codex        →  implementación principal (primera opción)
+OpenCode     →  implementación secundaria o análisis
+Frontend     →  trabajo frontend amplio o desbordamiento
+Backend      →  trabajo backend o desbordamiento
 ```
 
-El Orquestador NO asigna implementación a OpenCode. OpenCode solo analiza y reporta hallazgos. La TUI gestiona el fallback automático al fallar Codex.
+**Cuando hay múltiples tareas independientes, distribúyelas entre agentes desde el principio.** No asignes todas las tareas a Codex — quedarán en cola y se ejecutarán de una en una.
+
+La TUI gestiona el fallback automático al fallar un agente (Codex falla → Claude-Worker). No es necesario reasignar manualmente salvo que la tarea quede marcada como `failed`.
 
 ## El workspace NO es el proyecto real
 
@@ -182,11 +185,10 @@ Revisa `orchestrator.config.json` → `agents`. Cada entrada tiene:
 ## Cómo asignar trabajo
 
 1. **Cuando el usuario pide un cambio o nueva tarea** → **NUNCA analices directamente**
-- **Si ya existe contexto suficiente** (reportes de OpenCode de esta sesión, tareas similares ya completadas, cambios que el usuario especificó exactamente): **omite OpenCode** y crea TASKs de implementación directamente asignadas a **Codex** o **Claude-Worker**. Asigna todas las tareas independientes en paralelo.
-- **Si se necesita análisis previo** (área nueva, estructura desconocida, sin reporte previo): Crea UNA TASK asignada a **OpenCode** para esa área. Asigna todas las demás tareas independientes a Codex en paralelo — no las hagas esperar a OpenCode.
+- **Si ya existe contexto suficiente** (reportes de OpenCode de esta sesión, tareas similares ya completadas, cambios que el usuario especificó exactamente): **omite OpenCode** y crea TASKs de implementación en paralelo, distribuyéndolas entre los agentes disponibles.
+- **Si se necesita análisis previo** (área nueva, estructura desconocida, sin reporte previo): Crea UNA TASK asignada a **OpenCode** para esa área. Las demás tareas independientes van a otros agentes en paralelo — no esperan a OpenCode.
 - **Espera el reporte de OpenCode solo para las tareas que dependen de él**: OpenCode escribe hallazgos en `progress/PROGRESS-OpenCode.md` y notifica en `INBOX.md`
-- **Luego implementa la tarea dependiente**: **LEE EL REPORTE DE OPENCODE** y crea la TASK de implementación asignada a **Codex**
-- **OpenCode NO implementa** — sus TASKs son **SOLO de análisis**; la implementación **SIEMPRE** va a Codex o Claude-Worker
+- **Luego implementa la tarea dependiente**: **LEE EL REPORTE DE OPENCODE** y crea las TASKs de implementación distribuyéndolas entre todos los agentes disponibles (Codex, OpenCode si ya terminó el análisis, Frontend, Backend).
 - **NUNCA analices el código del proyecto tú mismo (Claude-Orquestador)** — usa OpenCode para eso. Si ya existe un reporte, **USA ESE CONTEXTO** directamente.
 
 2. Escribe TASKs en `QUEUE.md` (formato pipe; la TUI lo lee):
@@ -197,20 +199,17 @@ Revisa `orchestrator.config.json` → `agents`. Cada entrada tiene:
     Valores válidos de `repo`: exactamente las keys de `orchestrator.config.json.repos`.
 3. (Opcional) También escribe una spec larga en `TASKS.md` bajo un heading `### TASK-NNN`; se inyecta al brief.
 4. (Opcional) Para un brief muy detallado, crea `briefs/TASK-NNN-BRIEF.md`; también se inyecta.
-5. Dependencias: agrega `> after:TASK-NNN` al final de la descripción para bloquear la tarea.
+5. Dependencias: agrega `> after:TASK-NNN` al final de la descripción **solo cuando la salida de esa tarea sea requerida como entrada para la siguiente** (dependencia de datos real). No agregues `after:` para tareas que simplemente son relacionadas o siguen un orden lógico — las tareas independientes deben ejecutarse en paralelo.
 6. **La TUI inicia automáticamente** - NO necesitas presionar R ni S. La TUI detecta nuevas tasks y las lanza.
-7. **Codex es la primera opción para implementación; OpenCode es la segunda opción.** Claude-Worker es el fallback automático de Codex/OpenCode y también toma trabajo cuando hay más tareas que agentes disponibles.
-8. **REGLA CRÍTICA SOBRE ANÁLISIS:** Si OpenCode ya analizó algo y escribió su reporte en `INBOX.md` o `progress/PROGRESS-OpenCode.md`, **TÚ (Claude-Orquestador) NO DEBES VOLVER A ANALIZAR EL MISMO CÓDIGO**. Usa el reporte existente para crear tareas de implementación. Si necesitas más detalles, pide a OpenCode que haga un análisis adicional con una nueva TASK, pero **NUNCA lo hagas tú directamente**.
+7. **Regla de distribución de agentes — máximo 1 task por agente por batch:** Cada agente ejecuta una tarea a la vez. Cuando crees múltiples tasks en un mismo momento, asigna **una task distinta a cada agente disponible**. Nunca pongas 2 tasks al mismo agente en el mismo batch — la segunda quedará en cola esperando que termine la primera.
+   - Ejemplo con 3 tasks: TASK-001 → Codex, TASK-002 → OpenCode, TASK-003 → Frontend
+   - Revisa `STATUS.md` para saber qué agentes están libres antes de asignar.
+8. **REGLA CRÍTICA SOBRE ANÁLISIS:** Si OpenCode ya analizó algo y escribió su reporte en `INBOX.md` o `progress/PROGRESS-OpenCode.md`, **TÚ (Claude-Orquestador) NO DEBES VOLVER A ANALIZAR EL MISMO CÓDIGO**. Usa el reporte existente para crear tareas de implementación.
 9. **Regla de ejecución en paralelo — nunca serialices lo que puede correr en paralelo:**
-   - **Si el contexto ya existe**: asigna todas las tareas independientes en paralelo a Codex y Claude-Worker a la vez. No las pongas en cola una por una.
-   - **Si falta contexto para un área**: manda UNA TASK a OpenCode para esa área. Las demás tareas independientes van a Codex en paralelo — no esperan a OpenCode.
-   - **Distribución por volumen:**
-     - 1 tarea de análisis → OpenCode
-     - 1 tarea de implementación → Codex
-     - 2 tareas paralelas → OpenCode (análisis) + Codex (implementación con spec clara)
-     - 3+ tareas independientes con contexto claro → Codex + Frontend/Backend en paralelo
-   - **¿Cuándo el contexto es suficiente?** OpenCode ya reportó sobre esa área en esta sesión / el usuario especificó exactamente qué cambiar / tareas similares ya se completaron esta sesión.
-10. Si hay más TASKs que agentes disponibles, deja el resto en cola con dependencias claras o prioridad menor; no uses Gemini, Cursor ni Abacus salvo permiso explícito.
+   - **Si el contexto ya existe**: asigna todas las tareas independientes en paralelo, distribuyéndolas entre agentes disponibles.
+   - **Si falta contexto para un área**: manda UNA TASK a OpenCode para esa área. Las demás tareas independientes van a Codex u otros agentes en paralelo — no esperan a OpenCode.
+   - **¿Cuándo el contexto es suficiente?** OpenCode ya reportó sobre esa área / el usuario especificó exactamente qué cambiar / tareas similares ya se completaron esta sesión.
+10. Si hay más TASKs que agentes disponibles, asigna primero a los agentes libres y deja el resto en cola con prioridad menor; no uses Gemini, Cursor ni Abacus salvo permiso explícito.
 9. El campo `repo` determina en qué directorio trabaja el agente. Usa siempre el valor correcto: `frontend` para trabajo de UI/cliente, `backend` para trabajo de API/servidor. Codex y OpenCode pueden trabajar en ambos repos según lo que indique la task.
 
 ## Reglas
