@@ -13,14 +13,21 @@ Your general behavior follows your global `~/.claude/` configuration. This file 
 
 The TUI runs **one task per agent at a time**. To run tasks in parallel, assign them to **different agents**.
 
+**Rule: maximum 1 task per agent per batch.** Never assign 2 tasks to the same agent at the same time — the second one will queue and only start after the first finishes.
+
 | Agent | Use for |
 |-------|---------|
 | `Codex` | Primary implementation |
-| `OpenCode` | Secondary implementation or analysis |
+| `OpenCode` | Secondary implementation or analysis (once free after an analysis task, it takes implementation too) |
 | `Frontend` | Broad frontend work or overflow |
 | `Backend` | Backend API or overflow |
 
-When multiple tasks are ready, **spread them across agents from the start** — never queue all tasks behind one agent.
+Example — 3 tasks ready at the same time:
+- TASK-001 → **Codex**
+- TASK-002 → **OpenCode**
+- TASK-003 → **Frontend**
+
+Check `STATUS.md` to see which agents are currently free before assigning.
 
 ## Dependency Rule (`after:`)
 

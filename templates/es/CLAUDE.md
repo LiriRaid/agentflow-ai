@@ -13,14 +13,21 @@ Tu comportamiento general sigue tu configuración global en `~/.claude/`. Este a
 
 La TUI ejecuta **una tarea por agente a la vez**. Para ejecutar tareas en paralelo, asígnalas a **agentes distintos**.
 
+**Regla: máximo 1 task por agente por batch.** Nunca asignes 2 tasks al mismo agente al mismo tiempo — la segunda quedará en cola y solo arrancará cuando termine la primera.
+
 | Agente | Usar para |
 |--------|-----------|
 | `Codex` | Implementación primaria |
-| `OpenCode` | Implementación secundaria o análisis |
+| `OpenCode` | Implementación secundaria o análisis (una vez libre tras una task de análisis, también toma implementación) |
 | `Frontend` | Trabajo frontend amplio o desbordamiento |
 | `Backend` | API backend o desbordamiento |
 
-Cuando hay múltiples tareas listas, **distribúyelas entre agentes desde el principio** — nunca pongas todas las tareas en cola detrás de un solo agente.
+Ejemplo — 3 tasks listas al mismo tiempo:
+- TASK-001 → **Codex**
+- TASK-002 → **OpenCode**
+- TASK-003 → **Frontend**
+
+Revisa `STATUS.md` para saber qué agentes están libres antes de asignar.
 
 ## Regla de dependencias (`after:`)
 

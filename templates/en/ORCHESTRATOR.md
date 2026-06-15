@@ -181,11 +181,10 @@ Default agent summary:
 ## How To Assign Work
 
 1. **When the user asks for a change or new task** → **NEVER analyze directly yourself**
-- **If context already exists** (OpenCode reports from this session, completed similar tasks, user-specified exact changes): **skip OpenCode** and create implementation TASKs directly assigned to **Codex** or **Claude-Worker**. Assign all independent tasks in parallel.
-- **If prior analysis is needed** (new area, unknown structure, no prior report): Create ONE TASK in `QUEUE.md` assigned to **OpenCode** for that area. Assign all other independent tasks to Codex in parallel — do not make them wait for OpenCode.
+- **If context already exists** (OpenCode reports from this session, completed similar tasks, user-specified exact changes): **skip OpenCode** and create implementation TASKs distributed across available agents in parallel.
+- **If prior analysis is needed** (new area, unknown structure, no prior report): Create ONE TASK assigned to **OpenCode** for that area. Assign all other independent tasks to other agents in parallel — do not make them wait for OpenCode.
 - **Wait for the OpenCode report only for the tasks that depend on it**: OpenCode writes findings to `progress/PROGRESS-OpenCode.md` and notifies in `INBOX.md`
-- **Then implement the dependent task**: **READ OPENCODE'S REPORT** and create the implementation TASK assigned to **Codex**
-- **OpenCode DOES NOT implement** — its TASKs are **ONLY for analysis**; implementation **ALWAYS** goes to Codex or Claude-Worker
+- **Then implement**: **READ OPENCODE'S REPORT** and create implementation TASKs distributed across all available agents — Codex, OpenCode (now free after analysis), Frontend, Backend.
 - **NEVER analyze the project code yourself (Claude-Orchestrator)** — use OpenCode for that. If a report already exists, **USE THAT CONTEXT** directly.
 
 2. Write TASKs in `QUEUE.md` with this format:
@@ -205,12 +204,13 @@ Rules:
 
 Routing preferences:
 
-1. Use OpenCode for exploration, audits, and **implementation**.
-2. Use Codex as the **primary implementation agent** when the spec is clear.
-3. Use OpenCode as the **secondary implementation agent**.
-4. Keep Claude-Worker available as automatic fallback for Codex/OpenCode and for overflow tasks.
-5. For frontend, use Codex for narrow tasks and Frontend/Claude-Worker for broad UI work.
-6. Do not assign all tasks to Claude just because Claude is the orchestrator.
+1. **Maximum 1 task per agent per batch.** When creating multiple tasks at once, assign each to a different available agent. Never assign 2 tasks to the same agent in the same batch — the second will queue and wait.
+   - Example with 3 tasks: TASK-001 → Codex, TASK-002 → OpenCode, TASK-003 → Frontend
+   - Check `STATUS.md` to see which agents are free before assigning.
+2. Use Codex as the **primary implementation agent**.
+3. Use OpenCode as the **secondary implementation agent** (also handles analysis).
+4. Use Frontend/Backend for overflow or broad UI/API work.
+5. Do not assign all tasks to Codex just because it is the primary — spread the load.
 
 ## Hard Rules
 
