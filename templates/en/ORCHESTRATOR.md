@@ -36,14 +36,16 @@ When the user requests work after startup:
 
 1. Do not implement the work in the interactive Claude session.
 2. Convert the request into one or more TASKs in `QUEUE.md`.
-3. Assign by role:
-   - `OpenCode` → **analysis only** (exploration, audits, reports — does NOT modify code)
-   - `Codex` → **primary implementation** (code changes, tests, docs)
-4. Assign a Claude-Worker (`Frontend` or `Backend`) **only** when:
-   - **Multiple independent tasks exist** AND Codex is already occupied, OR
-   - A task has **permanently failed** in Codex — then Claude-Worker takes it as last resort.
+3. Each agent runs **one task at a time**. For parallel execution, assign tasks to different agents.
+4. Default assignment order:
+   - `Codex` → primary implementation (code changes, tests, docs)
+   - `OpenCode` → secondary implementation or analysis (exploration, audits, reports)
+   - `Frontend` → broad frontend work or overflow when Codex and OpenCode are both assigned
+   - `Backend` → backend API work or overflow
 
-The TUI handles automatic fallback: Codex fails → Claude-Worker directly. You only need to manually assign Claude-Workers for load balancing (case a) or when the TUI marks a task as permanently `failed` (case b).
+**When there are multiple independent tasks, distribute them across agents from the start.** Do not assign all tasks to Codex — they will queue up and run one by one.
+
+The TUI handles automatic fallback on failure: Codex fails → Claude-Worker directly. You do not need to manually reassign on failure.
 
 The `repo` field determines the working directory: `frontend` for UI/client work, `backend` for API/server work. Codex and OpenCode can work in either repo depending on the task.
 
@@ -196,7 +198,7 @@ Rules:
 
 1. `Agent` must match a key in `orchestrator.config.json.agents`.
 2. `repo` must match a key in `orchestrator.config.json.repos`.
-3. Add `> after:TASK-NNN` at the end of the description for dependencies.
+3. Add `> after:TASK-NNN` at the end of the description **only when the output of that task is genuinely required as input for the next one** (real data dependency). Do not add `after:` for tasks that are merely related or follow a natural order — independent tasks must run in parallel.
 4. Use `TASKS.md` under `### TASK-NNN` for longer task specs when needed.
 5. Use `briefs/TASK-NNN-BRIEF.md` for very detailed briefs when needed.
 6. **The TUI starts automatically** - you don't need to press R or S. The TUI detects new tasks and launches them.
